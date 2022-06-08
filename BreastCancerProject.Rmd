@@ -1,0 +1,507 @@
+---
+title: "BreastCancerProject"
+author: "Victor Armani"
+date: "4/12/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Import Packages
+```{r}
+library(RColorBrewer)
+library(GISTools)
+library(car)
+library(corrplot)
+```
+
+Getting colors
+```{r}
+colors <- brewer.pal(8, "Accent")
+colorsT <- add.alpha(colors, .5)
+greyCol <- rgb(.5,.5,.5)
+colors2 <- brewer.pal(11, "PiYG")
+corrColors <- colorRampPalette(colors2)(256)
+greyColT <- add.alpha(greyCol, .5)
+```
+
+```{r}
+data <- read.csv("C:/Users/Ryan/OneDrive/Documents/Data Vis/Assignments/Final_Project/BreastCancer.csv")
+```
+
+```{r}
+data <- na.omit(data)
+data[data$diagnosis == "M", "diagnosis"] <- 1
+data[data$diagnosis == "B", "diagnosis"] <- 0
+data$diagnosis <- as.numeric(data$diagnosis)
+summary(data)
+
+```
+
+Select variables based on correlation to diagnosis
+```{r}
+corM <- cor(data[,-c(1,dim(data)[2])], use = "complete.obs", method = "spearman")
+corrplot(corM, method = "ellipse", type="upper", diag=FALSE, tl.cex =.7, col = corrColors,
+         tl.col = rgb(.5,.5,.5))
+```
+From this, we picked the area_mean, texture_worst, and smoothness worst.
+
+Visualize distributions of selected variables
+```{r, fig.height=5, fig.width=12}
+# Subset data
+malignData <- data[data$diagnosis == 1, ]
+benignData <- data[data$diagnosis == 0, ]
+# Remove outliers
+mBox <- boxplot(malignData$area_mean, plot = FALSE)
+malignData <- malignData[!(malignData$area_mean %in% mBox$out), ]
+bBox <- boxplot(benignData$area_mean, plot = FALSE)
+benignData <- benignData[!(benignData$area_mean %in% bBox$out), ]
+outFreeData <- data[!(data$area_mean %in% c(mBox$out,bBox$out)), ]
+# Establish plotting parameters and densities
+layout(matrix(c(1,2,3,4),nrow = 2), heights = c(3,1.5))
+xLimit <- range(malignData$area_mean, benignData$area_mean)
+breakSize <- 140
+xBreaks <- seq(floor(xLimit[1]), xLimit[2]+breakSize, breakSize)
+mStats <- hist(malignData$area_mean, breaks = xBreaks, plot = FALSE)
+bStats <- hist(benignData$area_mean, breaks = xBreaks, plot = FALSE)
+mStats$density <- mStats$counts/sum(mStats$counts)
+bStats$density <- bStats$counts/sum(bStats$counts)
+yLimit <- range(pretty(range(pretty(range(mStats$density, bStats$density)))))
+
+# Plot densities
+par(mai = c(0,1,1,0))
+plot(bStats, freq = FALSE, border = greyCol, col = colorsT[1], ylim = yLimit,
+     axes = FALSE, labels = FALSE, ann = FALSE)
+plot(mStats, freq = FALSE, border = greyCol, col = colorsT[2], add = TRUE)
+axis(2, at = pretty(yLimit), labels = FALSE, tck = -.02, lwd = 2)
+mtext(pretty(yLimit), 2, las = 1, line = .7, at = pretty(yLimit))
+mtext("Precentage of Obsevations", 2, line = 3, adj = .5, font = 2)
+title("Distribution of Area Mean by Diagnosis")
+
+# Draw boxplot
+par(mai = c(1,1,0,0))
+boxplot(area_mean ~ diagnosis, data = outFreeData, boxwex = .4, horizontal = TRUE, 
+        ylim = range(xBreaks), ann = FALSE, axes = FALSE, col = colors[1:2],
+        outbg = colors[1:2], pch = 21, border = greyCol)
+axis(1, at = xBreaks, tck = 0.07, labels = FALSE, lwd = 2)
+mtext(xBreaks, 1, at = xBreaks, line = .3, cex = .8)
+mtext("Area Mean", 1, adj = .5, cex = 1, line = 2, font = 2)
+
+# Draw distribution
+DM <- density(malignData$area_mean, bw = 45)
+DM$y <- DM$y/max(DM$y)
+mXX <- c(DM$x, rev(DM$x))
+mYY <- c(DM$y, rep(0, length(DM$y)))
+
+DB <- density(benignData$area_mean, bw = 25)
+DB$y <- DB$y/max(DB$y)
+bXX <- c(DB$x, rev(DB$x))
+bYY <- c(DB$y, rep(0, length(DB$y)))
+
+yLimit <- c(0,1)
+par(mai = c(0,0,1,0))
+plot(x = NULL, y = NULL, axes = FALSE, ann = FALSE, xlim = range(pretty(range(c(DM$x, DB$x)))), ylim = yLimit)
+polygon(bXX, bYY, border = FALSE, col = colorsT[1])
+lines(DB$x, DB$y, col = colors[1], lwd = 3)
+polygon(mXX, mYY, border = FALSE, col = colorsT[2])
+lines(DM$x, DM$y, col = colors[2], lwd = 3)
+```
+
+
+```{r, fig.height=5, fig.width=12}
+# Subset data
+malignData <- data[data$diagnosis == 1, ]
+benignData <- data[data$diagnosis == 0, ]
+# Remove outliers
+mBox <- boxplot(malignData$texture_worst, plot = FALSE)
+malignData <- malignData[!(malignData$texture_worst %in% mBox$out), ]
+bBox <- boxplot(benignData$texture_worst, plot = FALSE)
+benignData <- benignData[!(benignData$texture_worst %in% bBox$out), ]
+outFreeData <- data[!(data$texture_worst %in% c(mBox$out,bBox$out)), ]
+# Establish plotting parameters and densities
+layout(matrix(c(1,2,3,4),nrow = 2), heights = c(3,1.5))
+xLimit <- range(malignData$texture_worst, benignData$texture_worst)
+breakSize <- 2
+xBreaks <- seq(floor(xLimit[1]), xLimit[2]+breakSize, breakSize)
+mStats <- hist(malignData$texture_worst, breaks = xBreaks, plot = FALSE)
+bStats <- hist(benignData$texture_worst, breaks = xBreaks, plot = FALSE)
+mStats$density <- mStats$counts/sum(mStats$counts)
+bStats$density <- bStats$counts/sum(bStats$counts)
+yLimit <- range(pretty(range(pretty(range(mStats$density, bStats$density)))))
+
+# Plot densities
+par(mai = c(0,1,1,0))
+plot(bStats, freq = FALSE, border = greyCol, col = colorsT[1], ylim = yLimit,
+     axes = FALSE, labels = FALSE, ann = FALSE)
+plot(mStats, freq = FALSE, border = greyCol, col = colorsT[2], add = TRUE)
+axis(2, at = pretty(yLimit), labels = FALSE, tck = -.02, lwd = 2)
+mtext(pretty(yLimit), 2, las = 1, line = .7, at = pretty(yLimit))
+mtext("Precentage of Obsevations", 2, line = 3, adj = .5, font = 2)
+title("Distribution of Worst Texture by Diagnosis")
+legend("topleft", c("Bening", "Malignant"), fill = colors[1:2], bty = "n", border = greyCol)
+
+# Draw boxplot
+par(mai = c(1,1,0,0))
+boxplot(texture_worst ~ diagnosis, data = outFreeData, boxwex = .4, horizontal = TRUE, 
+        ylim = range(xBreaks), ann = FALSE, axes = FALSE, col = colors[1:2],
+        outbg = colors[1:2], pch = 21, border = greyCol)
+axis(1, at = xBreaks, tck = 0.07, labels = FALSE, lwd = 2)
+mtext(xBreaks, 1, at = xBreaks, line = .3, cex = .9)
+mtext("Worst Texture", 1, adj = .5, cex = 1, line = 2, font = 2)
+ 
+# Draw distribution
+DM <- density(malignData$texture_worst, bw = 1)
+DM$y <- DM$y/max(DM$y)
+mXX <- c(DM$x, rev(DM$x))
+mYY <- c(DM$y, rep(0, length(DM$y)))
+
+DB <- density(benignData$texture_worst, bw = 1)
+DB$y <- DB$y/max(DB$y)
+bXX <- c(DB$x, rev(DB$x))
+bYY <- c(DB$y, rep(0, length(DB$y)))
+
+yLimit <- c(0,1)
+par(mai = c(0,0,1,0))
+plot(x = NULL, y = NULL, axes = FALSE, ann = FALSE, xlim = range(pretty(range(c(DM$x, DB$x)))), ylim = yLimit)
+polygon(bXX, bYY, border = FALSE, col = colorsT[1])
+lines(DB$x, DB$y, col = colors[1], lwd = 3)
+polygon(mXX, mYY, border = FALSE, col = colorsT[2])
+lines(DM$x, DM$y, col = colors[2], lwd = 3)
+```
+
+
+```{r, fig.width= 12, fig.height=5}
+# Subset data
+malignData <- data[data$diagnosis == 1, ]
+benignData <- data[data$diagnosis == 0, ]
+# Remove outliers
+mBox <- boxplot(malignData$smoothness_worst, plot = FALSE)
+malignData <- malignData[!(malignData$smoothness_worst %in% mBox$out), ]
+bBox <- boxplot(benignData$smoothness_worst, plot = FALSE)
+benignData <- benignData[!(benignData$smoothness_worst %in% bBox$out), ]
+outFreeData <- data[!(data$smoothness_worst %in% c(mBox$out,bBox$out)), ]
+# Establish plotting parameters and densities
+layout(matrix(c(1,2,3,4),nrow = 2), heights = c(3,1.5))
+xLimit <- range(malignData$smoothness_worst, benignData$smoothness_worst)
+breakSize <- .01
+xBreaks <- seq(round(xLimit[1], 2), xLimit[2]+breakSize, breakSize)
+mStats <- hist(malignData$smoothness_worst, breaks = xBreaks, plot = FALSE)
+bStats <- hist(benignData$smoothness_worst, breaks = xBreaks, plot = FALSE)
+mStats$density <- mStats$counts/sum(mStats$counts)
+bStats$density <- bStats$counts/sum(bStats$counts)
+yLimit <- range(pretty(range(pretty(range(mStats$density, bStats$density)))))
+
+# Plot densities
+par(mai = c(0,1,1,0))
+plot(bStats, freq = FALSE, border = greyCol, col = colorsT[1], ylim = yLimit,
+     axes = FALSE, labels = FALSE, ann = FALSE, bg = "transparent")
+plot(mStats, freq = FALSE, border = greyCol, col = colorsT[2], add = TRUE, bg = "transparent")
+axis(2, at = pretty(yLimit), labels = FALSE, tck = -.02, lwd = 2)
+mtext(pretty(yLimit), 2, las = 1, line = .7, at = pretty(yLimit))
+mtext("Precentage of Obsevations", 2, line = 3, adj = .5, font = 2)
+title("Distribution of Worst Smoothness by Diagnosis")
+legend("topleft", c("Bening", "Malignant"), fill = colors[1:2], bty = "n", border = greyCol)
+
+# Draw boxplot
+par(mai = c(1,1,0,0))
+boxplot(smoothness_worst ~ diagnosis, data = outFreeData, boxwex = .4, horizontal = TRUE, 
+        ylim = range(xBreaks), ann = FALSE, axes = FALSE, col = colors[1:2],
+        outbg = colors[1:2], pch = 21, border = greyCol, bg = "transparent")
+axis(1, at = xBreaks, tck = 0.07, labels = FALSE, lwd = 2)
+mtext(xBreaks, 1, at = xBreaks, line = .3, cex = .8)
+mtext("Worst Smoothness", 1, adj = .5, cex = 1, line = 2, font = 2)
+
+# Draw distribution curve
+DM <- density(malignData$smoothness_worst, bw = .004)
+DM$y <- DM$y/max(DM$y)
+mXX <- c(DM$x, rev(DM$x))
+mYY <- c(DM$y, rep(0, length(DM$y)))
+
+DB <- density(benignData$smoothness_worst, bw = .004)
+DB$y <- DB$y/max(DB$y)
+bXX <- c(DB$x, rev(DB$x))
+bYY <- c(DB$y, rep(0, length(DB$y)))
+
+par(mai = c(0,0,1,0))
+plot(x = NULL, y = NULL, axes = FALSE, ann = FALSE, xlim = range(pretty(range(c(DM$x, DB$x)))), ylim = c(0,1), bg = "transparent")
+polygon(bXX, bYY, border = FALSE, col = colorsT[1])
+lines(DB$x, DB$y, col = colors[1], lwd = 3)
+polygon(mXX, mYY, border = FALSE, col = colorsT[2])
+lines(DM$x, DM$y, col = colors[2], lwd = 3)
+```
+
+Performing test to analyze difference of distributions
+```{r}
+# Subset data
+malignData <- data[data$diagnosis == 1, ]
+benignData <- data[data$diagnosis == 0, ]
+# Remove outliers
+mBox <- boxplot(malignData$area_mean, plot = FALSE)
+malignData <- malignData[!(malignData$area_mean %in% mBox$out), ]
+bBox <- boxplot(benignData$area_mean, plot = FALSE)
+benignData <- benignData[!(benignData$area_mean %in% bBox$out), ]
+
+# Perform test
+res <- wilcox.test(malignData$area_mean, benignData$area_mean, data = data, alternative = 'greater',
+                   exact = FALSE)
+res
+```
+
+```{r}
+# Subset data
+malignData <- data[data$diagnosis == 1, ]
+benignData <- data[data$diagnosis == 0, ]
+# Remove outliers
+mBox <- boxplot(malignData$texture_worst, plot = FALSE)
+malignData <- malignData[!(malignData$texture_worst %in% mBox$out), ]
+bBox <- boxplot(benignData$texture_worst, plot = FALSE)
+benignData <- benignData[!(benignData$texture_worst %in% bBox$out), ]
+
+# Perform test
+res <- wilcox.test(malignData$texture_worst, benignData$texture_worst, data = data, alternative = 'greater',
+                   exact = FALSE)
+res
+```
+
+```{r}
+# Subset data
+malignData <- data[data$diagnosis == 1, ]
+benignData <- data[data$diagnosis == 0, ]
+# Remove outliers
+mBox <- boxplot(malignData$smoothness_worst, plot = FALSE)
+malignData <- malignData[!(malignData$smoothness_worst %in% mBox$out), ]
+bBox <- boxplot(benignData$smoothness_worst, plot = FALSE)
+benignData <- benignData[!(benignData$smoothness_worst %in% bBox$out), ]
+
+# Perform test
+res <- wilcox.test(malignData$smoothness_worst, benignData$smoothness_worst, data = data, alternative = 'greater',
+                   exact = FALSE)
+res
+```
+Testing model to confirm findings
+```{r}
+set.seed(42)
+
+
+IDX<- sample(c(TRUE, FALSE), dim(data)[1], replace = TRUE, prob=c(.75,.25))
+
+trainData<- data[IDX,]
+dim(trainData)[1] / dim(data)[1]
+testData <- data[!IDX,]
+```
+
+
+```{r}
+model<- glm(diagnosis ~ area_mean + texture_worst+ smoothness_worst, data = trainData, family = "binomial")
+summary(model)
+```
+
+```{r}
+modelA <- glm(diagnosis ~ area_mean, data = trainData, family = "binomial")
+modelT <- glm(diagnosis ~ texture_worst, data = trainData, family = "binomial")
+modelS <- glm(diagnosis ~ smoothness_worst, data = trainData, family = "binomial")
+modelAll <- glm(diagnosis ~ ., data = trainData, family = "binomial")
+```
+
+
+```{r}
+predictions<- predict(model, newdata = testData, type = "response") > 0.5
+predictionsA<- predict(modelA, newdata = testData, type = "response") > 0.5
+predictionsT<- predict(modelT, newdata = testData, type = "response") > 0.5
+predictionsS<- predict(modelS, newdata = testData, type = "response") > 0.5
+predictionsAll<- predict(modelAll, newdata = testData, type = "response") > 0.5
+
+accuracy<- sum(testData$diagnosis == predictions) / length(testData$diagnosis)
+FalseP <-sum((predictions == 1) & (testData$diagnosis == 0))/ sum(testData$diagnosis == 0)
+FalseN <-sum((predictions == 0) & (testData$diagnosis == 1))/ sum(testData$diagnosis == 1)
+p <- testData$diagnosis == predictions
+p <- testData$diagnosis[p]
+
+p1 <- p == 1
+p1 <- p[p1]
+
+p2 <- predictions == TRUE
+p2 <- predictions[p2]
+
+PPV <- length(p1)/length(p2)
+testData$prediction[predictions] <- 1
+testData$prediction[!predictions] <- 0
+```
+
+
+```{r}
+confusionMatrix <- data.frame(
+  Accuracy = c(accuracy),
+  FalsePos = c(FalseP),
+  FalseNeg = c(FalseN),
+  PositivePred = c(PPV)
+)
+confusionMatrix
+```
+
+Getting accuracy of simpler models
+```{r}
+getConfusionMatrix <- function(dataOV, preds){
+  POS <- dataOV == 1
+  NEG <- dataOV == 0
+  posPred <- preds > 0.5
+
+  # Calculating rates
+  accuracy <- sum(posPred == dataOV)/length(dataOV)
+  falsepos <- sum(NEG & posPred)/sum(NEG)
+  falseneg <- sum(POS & !posPred)/sum(POS)
+  pospredrt <- sum(POS & posPred)/sum(posPred)
+
+  # Placing rates into report data frame
+  report <- data.frame(Accuracy = accuracy,
+                      FalsePositive = falsepos,
+                      FalseNeg = falseneg,
+                      PosPred = pospredrt)
+return(report)
+}
+otherMods <- getConfusionMatrix(testData$diagnosis, predictionsA)
+otherMods[2,] <- getConfusionMatrix(testData$diagnosis, predictionsT)
+otherMods[3,] <- getConfusionMatrix(testData$diagnosis, predictionsS)
+otherMods[4,] <- getConfusionMatrix(testData$diagnosis, predictionsAll)
+row.names(otherMods) <- c("Area", "Texture", "Smoothness", "All")
+otherMods
+```
+
+
+```{r, fig.width= 12, fig.height=5}
+# Subset data
+malignData <- testData[testData$diagnosis == 1, ]
+benignData <- testData[testData$diagnosis == 0, ]
+# Remove outliers
+mBox <- boxplot(malignData$area_mean, plot = FALSE)
+malignData <- malignData[!(malignData$area_mean %in% mBox$out), ]
+bBox <- boxplot(benignData$area_mean, plot = FALSE)
+benignData <- benignData[!(benignData$area_mean %in% bBox$out), ]
+outFreeData <- testData[!(testData$area_mean %in% c(mBox$out,bBox$out)), ]
+# Establish plotting parameters and densities
+xLimit <- range(malignData$area_mean, benignData$area_mean)
+breakSize <- 140
+xBreaks <- seq(floor(xLimit[1]), xLimit[2]+breakSize, breakSize)
+mStats <- hist(malignData$area_mean, breaks = xBreaks, plot = FALSE)
+bStats <- hist(benignData$area_mean, breaks = xBreaks, plot = FALSE)
+mStats$density <- mStats$counts/sum(mStats$counts)
+bStats$density <- bStats$counts/sum(bStats$counts)
+yLimit <- range(pretty(range(pretty(range(mStats$density, bStats$density)))))
+
+# Draw boxplot
+par(mai = c(1,1,0,0))
+boxplot(area_mean ~ diagnosis, data = outFreeData, boxwex = .4, horizontal = TRUE, 
+        ylim = range(xBreaks), ann = FALSE, axes = FALSE, col = "transparent", lwd = 3,
+        outbg = colors[1:2], pch = 21, border = colorsT[1:2])
+axis(1, at = xBreaks, tck = 0.07, labels = FALSE, lwd = 2)
+mtext(xBreaks, 1, at = xBreaks, line = .3, cex = .8)
+mtext("Area Mean", 1, adj = .5, cex = 1, line = 2, font = 2)
+
+# Draw model distribution
+# Subset data
+malignData <- testData[testData$prediction == 1, ]
+benignData <- testData[testData$prediction == 0, ]
+# Remove outliers
+mBox <- boxplot(malignData$area_mean, plot = FALSE)
+malignData <- malignData[!(malignData$area_mean %in% mBox$out), ]
+bBox <- boxplot(benignData$area_mean, plot = FALSE)
+benignData <- benignData[!(benignData$area_mean %in% bBox$out), ]
+outFreeData <- testData[!(testData$area_mean %in% c(mBox$out,bBox$out)), ]
+# Draw boxplot
+par(mai = c(1,0,0,1))
+boxplot(area_mean ~ prediction, data = outFreeData, boxwex = .4, horizontal = TRUE, 
+        ylim = range(xBreaks), ann = FALSE, axes = FALSE, col = "transparent", pch = 21, border = greyColT, add = TRUE, lwd = 3)
+```
+
+```{r, fig.width= 12, fig.height=5}
+# Subset data
+malignData <- testData[testData$diagnosis == 1, ]
+benignData <- testData[testData$diagnosis == 0, ]
+# Remove outliers
+mBox <- boxplot(malignData$texture_worst, plot = FALSE)
+malignData <- malignData[!(malignData$texture_worst %in% mBox$out), ]
+bBox <- boxplot(benignData$texture_worst, plot = FALSE)
+benignData <- benignData[!(benignData$texture_worst %in% bBox$out), ]
+outFreeData <- testData[!(testData$texture_worst %in% c(mBox$out,bBox$out)), ]
+# Establish plotting parameters and densities
+xLimit <- range(malignData$texture_worst, benignData$texture_worst)
+breakSize <- 2
+xBreaks <- seq(floor(xLimit[1]), xLimit[2]+breakSize, breakSize)
+mStats <- hist(malignData$texture_worst, breaks = xBreaks, plot = FALSE)
+bStats <- hist(benignData$texture_worst, breaks = xBreaks, plot = FALSE)
+mStats$density <- mStats$counts/sum(mStats$counts)
+bStats$density <- bStats$counts/sum(bStats$counts)
+yLimit <- range(pretty(range(pretty(range(mStats$density, bStats$density)))))
+
+# Draw boxplot
+par(mai = c(1,1,0,0))
+boxplot(texture_worst ~ diagnosis, data = outFreeData, boxwex = .4, horizontal = TRUE, 
+        ylim = range(xBreaks), ann = FALSE, axes = FALSE, col = "transparent", lwd = 3,
+        outbg = colors[1:2], pch = 21, border = colorsT[1:2])
+axis(1, at = xBreaks, tck = 0.07, labels = FALSE, lwd = 2)
+mtext(xBreaks, 1, at = xBreaks, line = .3, cex = .8)
+mtext("Worst Texture", 1, adj = .5, cex = 1, line = 2, font = 2)
+
+# Draw model distribution
+# Subset data
+malignData <- testData[testData$prediction == 1, ]
+benignData <- testData[testData$prediction == 0, ]
+# Remove outliers
+mBox <- boxplot(malignData$texture_worst, plot = FALSE)
+malignData <- malignData[!(malignData$texture_worst %in% mBox$out), ]
+bBox <- boxplot(benignData$texture_worst, plot = FALSE)
+benignData <- benignData[!(benignData$texture_worst %in% bBox$out), ]
+outFreeData <- testData[!(testData$texture_worst %in% c(mBox$out,bBox$out)), ]
+# Draw boxplot
+par(mai = c(1,0,0,1))
+boxplot(texture_worst ~ prediction, data = outFreeData, boxwex = .4, horizontal = TRUE, 
+        ylim = range(xBreaks), ann = FALSE, axes = FALSE, col = "transparent", pch = 21, border = greyColT, add = TRUE, lwd = 3)
+```
+
+```{r, fig.width= 12, fig.height=5}
+# Subset data
+malignData <- testData[testData$diagnosis == 1, ]
+benignData <- testData[testData$diagnosis == 0, ]
+# Remove outliers
+mBox <- boxplot(malignData$smoothness_worst, plot = FALSE)
+malignData <- malignData[!(malignData$smoothness_worst %in% mBox$out), ]
+bBox <- boxplot(benignData$smoothness_worst, plot = FALSE)
+benignData <- benignData[!(benignData$smoothness_worst %in% bBox$out), ]
+outFreeData <- testData[!(testData$smoothness_worst %in% c(mBox$out,bBox$out)), ]
+# Establish plotting parameters and densities
+xLimit <- range(malignData$smoothness_worst, benignData$smoothness_worst)
+breakSize <- 0.04
+xBreaks <- seq(round(xLimit[1], 2), xLimit[2]+breakSize, breakSize)
+mStats <- hist(malignData$smoothness_worst, breaks = xBreaks, plot = FALSE)
+bStats <- hist(benignData$smoothness_worst, breaks = xBreaks, plot = FALSE)
+mStats$density <- mStats$counts/sum(mStats$counts)
+bStats$density <- bStats$counts/sum(bStats$counts)
+yLimit <- range(pretty(range(pretty(range(mStats$density, bStats$density)))))
+
+# Draw boxplot
+par(mai = c(1,1,0,0))
+boxplot(smoothness_worst ~ diagnosis, data = outFreeData, boxwex = .4, horizontal = TRUE, 
+        ylim = range(xBreaks), ann = FALSE, axes = FALSE, col = "transparent", lwd = 3,
+        outbg = colors[1:2], pch = 21, border = colorsT[1:2])
+axis(1, at = xBreaks, tck = 0.07, labels = FALSE, lwd = 2)
+mtext(xBreaks, 1, at = xBreaks, line = .3, cex = .8)
+mtext("Worst Smoothness", 1, adj = .5, cex = 1, line = 2, font = 2)
+
+# Draw model distribution
+# Subset data
+malignData <- testData[testData$prediction == 1, ]
+benignData <- testData[testData$prediction == 0, ]
+# Remove outliers
+mBox <- boxplot(malignData$smoothness_worst, plot = FALSE)
+malignData <- malignData[!(malignData$smoothness_worst %in% mBox$out), ]
+bBox <- boxplot(benignData$smoothness_worst, plot = FALSE)
+benignData <- benignData[!(benignData$smoothness_worst %in% bBox$out), ]
+outFreeData <- testData[!(testData$smoothness_worst %in% c(mBox$out,bBox$out)), ]
+# Draw boxplot
+par(mai = c(1,0,0,1))
+boxplot(smoothness_worst ~ prediction, data = outFreeData, boxwex = .4, horizontal = TRUE, 
+        ylim = range(xBreaks), ann = FALSE, axes = FALSE, col = "transparent", pch = 21, border = greyColT, add = TRUE, lwd = 3)
+```
+
